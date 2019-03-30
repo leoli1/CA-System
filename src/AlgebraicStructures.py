@@ -1,67 +1,96 @@
 '''
-Created on 19.01.2019
+Created on 28.03.2019
 
 @author: Leonard
 '''
 
+import BaseAlgebraicStructures as BAS
 
-class Ring(object):
-    zero=None
-    one=None
+class Integers(BAS.EuclideanDomain):
+    __instance = None
+    def __new__(cls):
+        if Integers.__instance is None:
+            Integers.__instance = object.__new__(cls)
+            super(Integers,Integers.__instance).__init__()
+            Integers.__instance._zero = 0
+            Integers.__instance._one = 1
+        return Integers.__instance
+        
+    def getQuotientField(self):
+        if self._quotientField!=None:
+            return self._quotientField
+        return Rationals()
     
-    def getZero(self):
-        if self.zero==None:
-            raise NotImplementedError()
-        return self.zero
-    def getOne(self):
-        if self.one==None:
-            raise NotImplementedError()
-        return self.one
-    
+    # ring methods
     def add(self, a, b):
-        raise NotImplementedError()
+        return a+b
     def mul(self, a, b):
-        raise NotImplementedError()
+        return a*b
+        
     def addInverse(self, a):
-        raise NotImplementedError()
-    def mulInverse(self,a):
-        raise NotImplementedError()
+        return -a
     
-    def isUnit(self, a):
-        return NotImplementedError()
+    def mulInverse(self, a):
+        if self.isUnit(a):
+            return a
+        return super(PolynomialDomain,self).mulInverse(a)
     
-    def sub(self, a,b):
-        return self.add(a,self.addInverse(b))
-    def div(self, a,b):
-        return self.mul(a,self.mulInverse(b))
+    # euclidean methods
+    def euclidFunction(self, a):
+        return abs(a)
+    def divisionWithRemainder(self, a, b):
+        return (a//b,a%b)
+    def getAssociateRepresentant(self, a):
+        return abs(a)
+    
+    def elementFromValue(self, value):
+        return value
     
     def getElementType(self):
-        raise NotImplementedError()
-    def elementFromValue(self, value):
-        if type(value)==self.getElementType():
-            return value
-        return self.getElementType().fromValue(value)
-    
-class Field(Ring):
+        return int
     def isUnit(self, a):
-        return a!=self.getZero()
-    
+        return a in [-1,1]
 
-class ResidueClassRing(Ring):
-    def __init__(self, order):
+class Rationals(BAS.QuotientField):
+    __instance = None
+    def __new__(cls):
+        if Rationals.__instance==None:
+            Rationals.__instance = object.__new__(cls)
+            super(Rationals,Rationals.__instance).__init__(Integers())
+        return Rationals.__instance
+    def __init__(self):
+        pass
+    
+    def getElementType(self):
+        return DomainElement.QuotientFieldElementRational
+
+class ResidueClassRing(BAS.Ring):
+    def __new__(cls, order, _makeFieldOpt=True):
         if type(order)!=int or order<2:
             raise Exception()
+        if NTU.isPrime(order) and _makeFieldOpt:
+            obj = ResidueClassField(order)
+            return obj
+        
+        obj = object.__new__(cls)
+        obj._init(order)
+        return obj
+    
+    def __init__(self, *args):
+        pass#super(ResidueClassRing, self).__init__()
+    
+    def _init(self, order):
         self.order = order
         self.__mulInverses={}
-        self.zero = Number.ModularInteger(0,self)
-        self.one = Number.ModularInteger(1,self)
-        
+        self._zero = DomainElement.ModularInteger(0,self)
+        self._one = DomainElement.ModularInteger(1,self)   
+    
     def add(self, a, b):
-        return Number.ModularInteger(a.val+b.val, self)
+        return DomainElement.ModularInteger(a.val+b.val, self)
     def mul(self, a, b):
-        return Number.ModularInteger(a.val*b.val, self)
+        return DomainElement.ModularInteger(a.val*b.val, self)
     def addInverse(self, a):
-        return Number.ModularInteger(self.order-a-1, self)
+        return DomainElement.ModularInteger(self.order-a.val, self)
     def mulInverse(self, a):
         if not self.isUnit(a):
             raise Exception("cant invert non-unit")
@@ -69,64 +98,183 @@ class ResidueClassRing(Ring):
         if a in self.__mulInverses:
             return self.__mulInverses[a]
         else:
-            return Number.ModularInteger(NTU.euclid(a,self.order)[0], self)
+            inverse = DomainElement.ModularInteger(NTU.euclid(a.val,self.order)[0], self)
+            self.__mulInverses[a]=inverse
+            return inverse
 
     def isUnit(self, a):
+        if a in self.__mulInverses:
+            return True
         return NTU.gcd(a.val,self.order)==1
     def getElementType(self):
-        return Number.ModularInteger
+        return DomainElement.ModularInteger
     def elementFromValue(self, value):
         if type(value)==self.getElementType():
             return value
         return self.getElementType().fromValue(value, self)
     
-class ResidueClassField(ResidueClassRing, Field):
-    def __init__(self, order):
+    def __eq__(self, other):
+        if not isinstance(other, ResidueClassRing):
+            return False
+        return self.order==other.order
+    
+    
+class ResidueClassField(ResidueClassRing, BAS.Field):
+    def __new__(cls, order):
         if not NTU.isPrime(order):
             raise Exception("no field")
-        super(ResidueClassField, self).__init__(order)
-        
-class Rationals(Field):
+        obj = object.__new__(cls) 
+        super(ResidueClassField, obj)._init(order)
+        return obj
 
-    def __init__(self):
-        pass
-    def _setupZeroOne(self):
-        self.zero = Number.RationalNumber(0,1)
-        self.one = Number.RationalNumber(1,1)
+    def isField(self):
+        return True
+        
+
+class SquareMatricesRing(BAS.Ring):
+    def __init__(self, size, domain):
+        self.size = size
+        self.basedomain = domain
+        self._zero = DomainElement.SquareMatrix(size, domain)
+        self._one = Matrix.getUnitMatrix(size, domain)
+        self.__mulInverses={}
+    
     def add(self, a, b):
-        #a,b = self._makeRat(a),self._makeRat(b)
-        return Number.RationalNumber(a.num*b.denom+a.denom*b.num,a.denom*b.denom)
-    def mul(self,a,b):
-        #a,b = self._makeRat(a),self._makeRat(b)
-        return Number.RationalNumber(a.num*b.num,a.denom*b.denom)
+        return a+b
+    def mul(self, a,b):
+        return a*b
     def addInverse(self, a):
-        #a = self._makeRat(a)
-        return Number.RationalNumber(-a.num,a.denom)
+        return -a
     def mulInverse(self, a):
-        #a = self._makeRat(a)
-        return Number.RationalNumber(a.denom,a.num)
+        if not self.isUnit(a):
+            raise Exception("no unit")
+        if a in self.__mulInverses:
+            return self.__mulInverses[a]
+        inverse = a.invert()
+        self.__mulInverses[a] = inverse
+        return inverse
+    
+    def isUnit(self, a):
+        if a in self.__mulInverses:
+            return True
+        return a.hasFullRank()
+        #return self.basedomain.isUnit(a.determinant())
     
     def getElementType(self):
-        return Number.RationalNumber
+        return DomainElement.SquareMatrix
     
-class PolynomialsOverField(Ring):
-    def __init__(self, baseField):
-        self.baseField = baseField
-        
-class FieldAdjunctionExtension(object):
+    def __eq__(self, other):
+        if type(other)!=SquareMatricesRing:
+            return False
+        return self.size==other.size and self.basedomain==other.basedomain
+
+class PolynomialDomain(BAS.EuclideanDomain):
     """
-    Field Extensions of type F(x) where F is a field, x is a new symbol and either transcendental or algebraic over F
+    univariate polynomial domain
+    """
+    def __init__(self, domain, symbol):
+        super(PolynomialDomain,self).__init__()
+        self.basedomain = domain
+        self.symbol = symbol
+        
+        self._zero = self([self.basedomain.zero])
+        self._one = self([self.basedomain.one])
+        
+    def getQuotientField(self):
+        if self._quotientField!=None:
+            return self._quotientField
+        return RationalFunctionsDomain(self)
+        
+    def add(self, a,b):
+        coeffs = []
+        for i in range(max(a.degree,b.degree)+1):
+            coeffs.append(a[i]+b[i])
+        return self(coeffs)#DomainElement.Polynomial(self, self.basedomain, coeffs)
+    def mul(self, a,b):
+        coeffs = []
+        for i in range(a.degree+b.degree+1):
+            c = sum((a[k]*b[i-k] for k in range(i+1)), self.basedomain.zero)
+            coeffs.append(c)
+        return self(coeffs)
+    def addInverse(self, a):
+        coeffs = []
+        for i in range(a.degree+1):
+            coeffs.append(self.basedomain.addInverse(a[i]))
+        return DomainElement.Polynomial(self, self.basedomain, coeffs)
+    def mulInverse(self, a):
+        if self.isUnit(a):
+            return self([self.basedomain.mulInverse(a[0])])
+        return super(PolynomialDomain,self).mulInverse(a)
+    
+    def __eq__(self, other):
+        if type(other)!=PolynomialDomain:
+            return False
+        return self.basedomain==other.basedomain and self.symbol==other.symbol
+        
+    """def div(self, a, b):
+        if self.isUnit(b):
+            return a*self.mulInverse(b)
+        if self.allowDivisionInRationalsField:
+            return self.getRationalsDomain()(a,b)
+        raise Exception()"""
+    def isUnit(self, a):
+        return a.degree==0 and self.basedomain.isUnit(a[0])
+    
+    #euclid stuff
+    def euclidFunction(self, a):
+        return a.degree
+    def divisionWithRemainder(self, a, b):
+        degA,degB = a.degree, b.degree
+        if degA<degB:
+            return (self.zero,a)
+        power = degA-degB
+        coeff = a[degA]/b[degB]
+        mon = self([self.basedomain.zero]*power+[coeff])
+        newA = a-mon*b
+        if newA==self.zero:
+            return (mon,self.zero)
+        else:
+            (q,r) = self.divisionWithRemainder(newA, b)
+            return (mon+q,r)
+        
+    def getAssociateRepresentant(self, a):
+        if a==self.zero:
+            return self.zero
+        return a/self([a.lcoeff])
+    
+    
+    def getElementType(self):
+        return DomainElement.Polynomial
+    
+    def elementFromValue(self, value):
+        if type(value)==self.getElementType():
+            return value
+        return self.getElementType().fromValue(value, self, self.basedomain)
+    
+class RationalFunctionsDomain(BAS.QuotientField):
+    def __init__(self, basering):
+        super(RationalFunctionsDomain, self).__init__(basering)
+        if not isinstance(basering, PolynomialDomain):
+            raise Exception()
+        basering._rationalsDomain = self
+        
+        
+'''class DomainAdjunctionExtension(object):
+    """
+    Field Extensions of type F(x) where F is a ring/field, x is a new symbol and either transcendental or algebraic over F
     """
     def __init__(self, baseField, variable, algebraic=False,minimalPolynomial=None):
         self.baseField = baseField
         self.variable = variable
         self.algebraic = algebraic
-        self.minimalPolynomial = minimalPolynomial
+        self.minimalPolynomial = minimalPolynomial'''
         
         
-import Number
+import DomainElement,Matrix
 import NTheoryUtils as NTU
+#F_Q = Rationals()
+#F_Q._setupZeroOne()
+Int = Integers()
 F_Q = Rationals()
-F_Q._setupZeroOne()
 
 FIELDS = [F_Q]
