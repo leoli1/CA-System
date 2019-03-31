@@ -12,7 +12,7 @@ class TestPolyTools(unittest.TestCase):
 
 
     def test_rootsOverFiniteFields(self):
-        Z7 = AS.ResidueClassField(7)
+        Z7 = AS.IntegerResidueClassField(7)
         Z7x = AS.PolynomialDomain(Z7,Symbol.Symbol('x'))
         poly = Z7x([1,0,1])
         self.assertEqual(polyTools.rootsOverFiniteField(poly), None)

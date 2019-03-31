@@ -12,7 +12,7 @@ class TestMatrix(unittest.TestCase):
 
 
     def test_Matrix(self):
-        Z5 = AS.ResidueClassField(5)
+        Z5 = AS.IntegerResidueClassField(5)
         m = Matrix.Matrix(2,2,Z5,[[2,1],[0,2]])
         n = Matrix.Matrix(2,2,Z5,[[3,1],[0,3]])
         self.assertEqual(str(m), "[2|1]\n[0|2]")
@@ -27,8 +27,14 @@ class TestMatrix(unittest.TestCase):
         
         k = Matrix.getUnitMatrix(2, Z5)
         self.assertTrue(k.isDiagonalizable())
+        (p,d) = k.getDiagonalizerMatrix()
+        self.assertEqual(p, d)
+        self.assertEqual(p, k)
+        
         m = Matrix.Matrix(2,2,Z5,[[1,1],[1,1]])
         self.assertTrue(m.isDiagonalizable())
+        (p,d) = m.getDiagonalizerMatrix()
+        self.assertEqual(p,Matrix.Matrix(2,2,Z5,[[4,1],[1,1]]))
         
         Q = AS.F_Q
         m = Matrix.Matrix(3,3,Q,[[1,1,0],[2,0,2],[-1,1,1]])
@@ -48,5 +54,5 @@ class TestMatrix(unittest.TestCase):
         
 
 
-suite = unittest.TestLoader().loadTestsFromTestCase(TestMatrix)
-unittest.TextTestRunner(verbosity=2).run(suite)
+if __name__ == "__main__":
+    unittest.main()

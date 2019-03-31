@@ -3,7 +3,7 @@ Created on 26.03.2019
 
 @author: Leonard
 '''
-def euclid(a,b):
+"""def euclid(a,b):
     r = a % b
     s = (a-r)/b
     if r==1:
@@ -19,7 +19,7 @@ def gcd(a,b):
     if r==0:
         return B
     else:
-        return gcd(B,r)
+        return gcd(B,r)"""
     
 def isPrime(a):
     for i in range(2,a/2+1):

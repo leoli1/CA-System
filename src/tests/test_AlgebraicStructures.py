@@ -9,6 +9,11 @@ import BaseAlgebraicStructures as BAS
 import Symbol
 
 class TestAlgebraicStructures(unittest.TestCase):
+    def test_IntegerResidueClass(self):
+        Z5 = AS.IntegerResidueClassRing(5)
+        a = Z5(4)
+        b = Z5(3)
+        print(a/b)
     def test_Rationals(self):
         Q = AS.F_Q
         self.assertIsInstance(Q, BAS.QuotientField)
@@ -21,10 +26,10 @@ class TestAlgebraicStructures(unittest.TestCase):
         self.assertEqual(a1+b1, b2+a2)
         self.assertEqual(a1+b1,Q(7,3))
     def test_ResidueClass(self):
-        r1 = AS.ResidueClassRing(5)
-        self.assertIsInstance(r1, AS.ResidueClassField)
-        r2 = AS.ResidueClassRing(6)
-        self.assertNotIsInstance(r2, AS.ResidueClassField)
+        r1 = AS.IntegerResidueClassRing(5)
+        self.assertIsInstance(r1, AS.IntegerResidueClassField)
+        r2 = AS.IntegerResidueClassRing(6)
+        self.assertNotIsInstance(r2, AS.IntegerResidueClassField)
         
         a = r1.elementFromValue(3)
         b = r1.elementFromValue(4)
@@ -34,7 +39,7 @@ class TestAlgebraicStructures(unittest.TestCase):
         self.assertEqual(a+b, c)
         
     def test_PolynomialDomain(self):
-        domain = AS.ResidueClassField(7)
+        domain = AS.IntegerResidueClassField(7)
         polydomain = AS.PolynomialDomain(domain, Symbol.Symbol('x'))
         poly1 = polydomain.elementFromValue([1,1])
         poly2 = polydomain.elementFromValue([0,2,3,0,7])
@@ -68,5 +73,5 @@ class TestAlgebraicStructures(unittest.TestCase):
         
         
 
-suite = unittest.TestLoader().loadTestsFromTestCase(TestAlgebraicStructures)
-unittest.TextTestRunner(verbosity=2).run(suite)
+if __name__ == "__main__":
+    unittest.main()

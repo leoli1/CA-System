@@ -80,6 +80,43 @@ class DomainElement(object):
     def fromValue(val, domain):
         raise NotImplementedError()
     
+class QuotientRingEquivalenceClass(DomainElement):
+    def __init__(self, domain,basering, val):
+        self.domain = domain
+        self.basering = basering
+        self.val = self.domain.getSimpleRepresentant(val)
+        
+        self.useEquivalenceClassNotation = False
+        
+        if not isinstance(domain, BAS.QuotientRing):
+            raise TypeError()
+        
+    def __eq__(self, other):
+        if id(other)==id(None):
+            return False
+        return self.domain.equal(self,other)
+    @classmethod
+    def fromValue(cls,val, domain):
+        return cls(domain,domain.ring,val)
+    
+    def __repr__(self):
+        if self.useEquivalenceClassNotation:
+            return "[{}]".format(self.val)
+        return str(self.val)
+    
+class IntegerResidueEquivalenceClass(QuotientRingEquivalenceClass):
+    def __init__(self, domain,val):
+        super(IntegerResidueEquivalenceClass,self).__init__(domain,domain.ring,val)
+        if type(domain.ring)!=AS.Integers:
+            raise TypeError()
+        if not isinstance(domain,AS.IntegerResidueClassRing):
+            raise TypeError()
+        
+    @staticmethod
+    def fromValue(val, domain):
+        return IntegerResidueEquivalenceClass(domain,val)
+        
+    
 class QuotientFieldElement(DomainElement):
     def __init__(self, domain, basedomain, a,b,simplify=True):
         self.domain = domain
@@ -117,7 +154,7 @@ class QuotientFieldElementRational(QuotientFieldElement):
         return "{}/{}".format(self.a,self.b)
         
     
-class ModularInteger(DomainElement):
+"""class ModularInteger(DomainElement):
     def __init__(self, val, domain):
         super(ModularInteger, self).__init__(domain)
         self.val = val%domain.order
@@ -133,7 +170,7 @@ class ModularInteger(DomainElement):
         return ModularInteger(val, domain)
     
     def __repr__(self):
-        return str(self.val%self.domain.order)
+        return str(self.val%self.domain.order)"""
     
         
 class Polynomial(DomainElement):#TODO
@@ -180,7 +217,7 @@ class Polynomial(DomainElement):#TODO
     def evaluate(self, value):
         return sum((self[i]*(value**i) for i in range(self.degree+1)), self.basedomain.zero)
     def findRoots(self):
-        if isinstance(self.basedomain, AS.ResidueClassField):
+        if isinstance(self.basedomain, AS.IntegerResidueClassField):
             return polyTools.rootsOverFiniteField(self)
         raise NotImplementedError()
     @staticmethod

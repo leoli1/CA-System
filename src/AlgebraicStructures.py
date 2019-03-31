@@ -41,7 +41,7 @@ class Integers(BAS.EuclideanDomain):
     def divisionWithRemainder(self, a, b):
         return (a//b,a%b)
     def getAssociateRepresentant(self, a):
-        return abs(a)
+        return abs(a),abs(a)/a
     
     def elementFromValue(self, value):
         return value
@@ -64,7 +64,60 @@ class Rationals(BAS.QuotientField):
     def getElementType(self):
         return DomainElement.QuotientFieldElementRational
 
-class ResidueClassRing(BAS.Ring):
+class IntegerIdeal(BAS.Ideal):
+    def __init__(self, gen):
+        super(IntegerIdeal,self).__init__(Integers(),[gen])
+        self.gen = gen
+        
+    def isMaximal(self):
+        return NTU.isPrime(self.gen)
+    
+    
+class IntegerResidueClassRing(BAS.QuotientRing):
+    def __new__(cls, order, _makeFieldOpt=True):
+        if type(order)!=int or order<2:
+            raise Exception()
+        if NTU.isPrime(order) and _makeFieldOpt:
+            obj = IntegerResidueClassField(order)
+            return obj
+        
+        obj = object.__new__(cls)
+        obj._init(order)
+        super(IntegerResidueClassRing,obj).__init__(Integers(),IntegerIdeal(order))
+        return obj
+    
+    def getSimpleRepresentant(self,val):
+        return val%self.order
+    
+    def getElementType(self):
+        return DomainElement.IntegerResidueEquivalenceClass
+    def __init__(self, *args):
+        pass
+    def _init(self, order):
+        self.order = order
+        self.__mulInverses={}
+        
+class IntegerResidueClassField(IntegerResidueClassRing, BAS.Field):
+    def __new__(cls, order):
+        if not NTU.isPrime(order):
+            raise Exception("no field")
+        obj = object.__new__(cls) 
+        super(IntegerResidueClassField, obj)._init(order)
+        super(IntegerResidueClassRing,obj).__init__(Integers(),IntegerIdeal(order))
+        return obj
+    def __init__(self, *args):
+        pass
+    def isUnit(self, a):
+        return True if a!=self.zero else False
+    def isField(self):
+        return True
+'''class ResidueClassRing(BAS.Ring):
+    """
+    # TODO
+    make this quotientring of integers with ideal nZ
+    then gcd stuff can be used from integer class
+    
+    """
     def __new__(cls, order, _makeFieldOpt=True):
         if type(order)!=int or order<2:
             raise Exception()
@@ -105,7 +158,7 @@ class ResidueClassRing(BAS.Ring):
     def isUnit(self, a):
         if a in self.__mulInverses:
             return True
-        return NTU.gcd(a.val,self.order)==1
+        return self.gcd(a.val,self.order)==self.one
     def getElementType(self):
         return DomainElement.ModularInteger
     def elementFromValue(self, value):
@@ -126,10 +179,12 @@ class ResidueClassField(ResidueClassRing, BAS.Field):
         obj = object.__new__(cls) 
         super(ResidueClassField, obj)._init(order)
         return obj
-
+    
+    def isUnit(self, a):
+        return True if a!=self.zero else False
     def isField(self):
         return True
-        
+ '''     
 
 class SquareMatricesRing(BAS.Ring):
     def __init__(self, size, domain):
@@ -211,12 +266,6 @@ class PolynomialDomain(BAS.EuclideanDomain):
             return False
         return self.basedomain==other.basedomain and self.symbol==other.symbol
         
-    """def div(self, a, b):
-        if self.isUnit(b):
-            return a*self.mulInverse(b)
-        if self.allowDivisionInRationalsField:
-            return self.getRationalsDomain()(a,b)
-        raise Exception()"""
     def isUnit(self, a):
         return a.degree==0 and self.basedomain.isUnit(a[0])
     
@@ -240,7 +289,8 @@ class PolynomialDomain(BAS.EuclideanDomain):
     def getAssociateRepresentant(self, a):
         if a==self.zero:
             return self.zero
-        return a/self([a.lcoeff])
+        f = self.mulInverse(self([a.lcoeff]))
+        return a*f,f
     
     
     def getElementType(self):

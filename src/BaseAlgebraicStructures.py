@@ -89,18 +89,37 @@ class EuclideanDomain(IntegralDomain):
     def getAssociateRepresentant(self, a):
         """
         a~b :<=> a|b and b|a defines an equivalence relation on R. this function returns a 
-        "simple" representant for the equivalence class [a]
+        "simple" representant b for the equivalence class [a] and the factor x, that got it into
+        this form, so b=ax
         """
         raise NotImplementedError()
     def gcd(self, a, b):
         f = self.euclidFunction
         (A,B) = (a,b) if f(a)>=f(b) else (b,a)
         if B==self.zero:
-            return self.getAssociateRepresentant(A)
+            return self.getAssociateRepresentant(A)[0]
         (_,r) = self.divisionWithRemainder(A, B)
         if r==self.zero:
-            return self.getAssociateRepresentant(B)
+            return self.getAssociateRepresentant(B)[0]
         return self.gcd(B,r)
+    def euclid(self,a,b,d=None):
+        (q,r) = self.divisionWithRemainder(a, b)
+        if d==None:
+            d = self.gcd(a,b)
+        r,f = self.getAssociateRepresentant(r)
+        if r==d:
+            x = self.mulInverse(f)
+            y = -q*x
+            return (x,y)
+        anew = b
+        bnew = r
+        xn,yn=self.euclid(anew,bnew,d=d)
+        return (yn,xn-yn*q)
+    def coprime(self,a,b):
+        return self.gcd(a,b)==self.getAssociateRepresentant(self.one)[0]
+    def divisibleBy(self, a,b):
+        return self.divisionWithRemainder(a, b)[1]==self.zero
+    
     
     def isEuclideanDomain(self):
         return True
@@ -113,7 +132,7 @@ class Field(EuclideanDomain):
     def divisionWithRemainder(self, a, b):
         return (a/b,0)
     def getAssociateRepresentant(self, a):
-        return self.one
+        return self.one,self.mulInverse(a)
     def isField(self):
         return True
     
@@ -143,9 +162,8 @@ class QuotientField(Field):
         gcd = self.basering.gcd(a,b)
         na = a//gcd
         nb = b//gcd
-        nnb = self.basering.getAssociateRepresentant(nb)
-        r = nnb//nb
-        nna = r*na
+        nnb,f = self.basering.getAssociateRepresentant(nb)
+        nna = f*na
         return (nna,nnb)
     def simplify(self, a):
         if not isinstance(self.basering, EuclideanDomain):
@@ -166,3 +184,71 @@ class QuotientField(Field):
     def elementFromValue(self, value,simplify=True):
         return self.getElementType().fromValue(value, self,simplify=simplify)
     
+class Ideal(Ring):
+    def __init__(self, ring, generator):
+        self.ring = ring
+        self.generator = generator
+        
+        self.add = ring.add
+        self.mul = ring.mul
+        self.isUnit = ring.isUnit
+        self.getElementType = ring.getElementType
+        self._zero = ring._zero
+        
+    def inIdeal(self, a):
+        if self.ring.isEuclideanDomain():
+            if self.isPrincipal():
+                if (self.generator[0]==self.zero):
+                    return a==self.zero
+                return self.ring.divisibleBy(a,self.generator[0])
+            raise NotImplementedError()
+        raise NotImplementedError()
+    
+    def isPrincipal(self):
+        return len(self.generator)==1
+    def isMaximal(self):
+        return False
+    
+class QuotientRing(Ring):
+    """
+    given a ring R and an ideal I in R, a~b :<=> a-b in I defines an equivalence relation on R
+    the set of equivalence classes defines a new ring - the quotient ring
+    if I is maximal the quotient ring is actually a field
+    """
+    def __init__(self,ring, ideal):
+        self.ring = ring
+        self.ideal = ideal
+        self._zero = self(ring.zero)
+        self._one = self(ring.one)
+        if ideal.ring!=ring:
+            raise Exception()
+        
+    def add(self, a,b):
+        return self(a.val+b.val)
+    def mul(self, a,b):
+        return self(a.val*b.val)
+    def addInverse(self,a):
+        return self(-a.val)
+    def mulInverse(self,a):
+        if self.ring.isEuclideanDomain() and self.ideal.isPrincipal():
+            return self(self.ring.euclid(a.val,self.ideal.generator[0])[0])
+        raise NotImplementedError()
+    
+    def isUnit(self, a):
+        if self.ring.isEuclideanDomain() and self.ideal.isPrincipal():
+            return self.ring.coprime(a.val,self.ideal.generator[0])
+        if self.ideal.isMaximal():
+            return a!=self.zero
+        raise NotImplementedError()
+    def equal(self, a,b):
+        return self.ideal.inIdeal(b.val-a.val)
+    
+    def isField(self):
+        return self.ideal.isMaximal()
+    
+    def getSimpleRepresentant(self,val):
+        raise NotImplementedError()
+    
+    def getElementType(self):
+        return DomainElement.QuotientRingEquivalenceClass
+        

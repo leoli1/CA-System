@@ -62,15 +62,17 @@ class RowOperation3(ElementaryRowOperation):
         
 class Matrix(object):
 
-    def __new__(cls, rows, columns, basedomain,data=None,_makeSquareOpt=True):
+    def __new__(cls, rows, columns, basedomain,data=None):
         
         obj = object.__new__(cls)
-        if rows==columns and _makeSquareOpt:
+        if rows==columns:# and _makeSquareOpt:
             obj = object.__new__(SquareMatrix)
             obj._init(rows,basedomain, data)#object.__new__(SquareMatrix, rows,basedomain,data) 
             return obj
         obj._init(rows,columns,basedomain,data)
         return obj
+    #def __init__(self,data=None,*args):
+    #    pass
     def _init(self, rows, columns, basedomain, data=None):
         if data==None:
             self.__data = [[basedomain.zero for j in range(columns)] for i in range(rows)]
@@ -148,6 +150,9 @@ class Matrix(object):
         return rank == min(self.rows,self.columns)
     
     def determinant(self, alg="gauss"):
+        """
+        returns the determinant of self
+        """
         if self.rows!=self.columns:
             raise Exception("no square matrix")
         if alg=="gauss":
@@ -163,6 +168,9 @@ class Matrix(object):
             return det
         
     def invert(self):
+        """
+        returns the inverse of self, if self is invertible
+        """
         if self.columns!=self.rows:
             raise MatrixInversionError("no square matrix")
         (_, rank, rowOps,_) = self.getRREF()
@@ -173,6 +181,9 @@ class Matrix(object):
             m = ops.apply(m)
         return m
     def charPoly(self):
+        """
+        returns the characteristic polynomial p of self=A, p = det(tI-A)
+        """
         if self.columns!=self.rows:
             raise MatrixInversionError("no square matrix")
         polyDomain = AS.PolynomialDomain(self.basedomain, Symbol.Symbol("t"))
@@ -188,6 +199,9 @@ class Matrix(object):
         return charMatrix.determinant().asBaseRingElement()
     
     def getNullspaceBasis(self):
+        """
+        returns a basis for the nullspace of self
+        """
         (rref, _,_,pivots) = self.getRREF()
         basis = []
         for i in range(self.columns):
@@ -202,18 +216,48 @@ class Matrix(object):
         return basis
     
     def getEigenValues(self):
+        """
+        returns a list [[l1,a1,g1],[l2,a2,g2],...] where the li are the different eigenvalues and the ai/gi 
+        are their algebraic/geometric multiplicities        
+        """
         cpoly = self.charPoly()
         roots = cpoly.findRoots()
         evs = []
         for (root,algMult) in roots:
             evs.append([root,algMult,(getUnitMatrix(self.rows, self.basedomain).scalarMultiplication(root)-self).nullity()])
+        evs.reverse()
         return evs
     def isDiagonalizable(self):
         evs = self.getEigenValues()
         return sum(x[2] for x in evs)==self.rows
+    def isTrigonalizable(self):
+        evs = self.getEigenValues()
+        return sum(x[1] for x in evs)==self.rows
+    
+    def getDiagonalizerMatrix(self):
+        """
+        returns (P,D), such that D is diagonal and self = PDP^(-1)
+        """
+        if not self.isDiagonalizable():
+            raise Exception("Not diagonalizable")
+        
+        eigenVectors = []
+        eigenValues = []
+        for (ev,m,_) in self.getEigenValues():
+            eigenVectors += (getUnitMatrix(self.rows, self.basedomain).scalarMultiplication(ev)-self).getNullspaceBasis()
+            eigenValues += [ev]*m
+        return (Matrix.getMatrixFromColumnVectors(eigenVectors), Matrix.diag(self.basedomain, eigenValues))
+        
     
 
     def getRREF(self):
+        """
+        returns (rref,rank,rowOps,pivots) where
+            - rref is the reduced row echelon form of self
+            - rank is the rank of self
+            - rowOps are the rowOperations that took it to transfrom self into rref
+            - pivots are the column-indices of the leading 1s in rref
+        """
         if self.__rrefTransform!=None:
             return self.__rrefTransform
         r=0
@@ -285,6 +329,29 @@ class Matrix(object):
         return (False, -1)
         
     
+    @staticmethod
+    def diag(basedomain, diagElements):
+        """
+        returns matrix with diagElements on the diagonal
+        """
+        n = len(diagElements)
+        m = Matrix(n,n,basedomain)
+        for i in range(n):
+            m[i,i] = diagElements[i]
+        return m
+    
+    @staticmethod
+    def getMatrixFromColumnVectors(vecs):
+        """
+        given vectors vecs=[v1,v2,...,vn]
+        returns Matrix m=[v1 v2 ... vn]
+        """
+        m = Matrix(vecs[0].rows, len(vecs), vecs[0].basedomain)
+        for i in range(m.rows):
+            for j in range(m.columns):
+                m[i,j] = vecs[j][i,0]
+        return m
+    
     def copy(self):
         m = Matrix(self.rows,self.columns,self.basedomain)
         for i in range(self.rows):
@@ -321,7 +388,8 @@ class Matrix(object):
     
 import DomainElement
 class SquareMatrix(Matrix, DomainElement.DomainElement):
-    def __init__(self,*args):
+    def __init__(self,a=None,b=None,c=None,data=None,*args):
+    #def __init__(self,*args):
         pass
     def _init(self, size, basedomain, data=None, domain=None):
         super(SquareMatrix, self)._init(size, size, basedomain, data)
@@ -341,11 +409,10 @@ class MatrixInversionError(Exception):
     pass
 
 if __name__=="__main__":
-    import AlgebraicStructures as AS
     Q = AS.F_Q
     Z5 = AS.ResidueClassField(5)
     m1 = Matrix(2,3,Q,data=[[1,2,3],[42,-1,0]])
-    m2 = Matrix(3,4,Q,data=[[0.5,0,0,1],[0,1,1,-1],[100,20,0,-1]])
+    m2 = Matrix(3,4,Q,data=[[0,0,0,1],[0,1,1,-1],[100,20,0,-1]])
     m3 = Matrix(2,2,Z5,data=[[1,3],[0,2]])
     m4 = Matrix(2,2,Z5,data=[[4,0],[3,3]])
     """print(m1)
