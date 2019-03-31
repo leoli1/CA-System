@@ -154,23 +154,6 @@ class QuotientFieldElementRational(QuotientFieldElement):
         return "{}/{}".format(self.a,self.b)
         
     
-"""class ModularInteger(DomainElement):
-    def __init__(self, val, domain):
-        super(ModularInteger, self).__init__(domain)
-        self.val = val%domain.order
-        
-    
-    def __eq__(self, other):
-        if id(other)==id(None):
-            return False
-        return (other.val-self.val)%self.domain.order==0
-    
-    @staticmethod
-    def fromValue(val, domain):
-        return ModularInteger(val, domain)
-    
-    def __repr__(self):
-        return str(self.val%self.domain.order)"""
     
         
 class Polynomial(DomainElement):#TODO
