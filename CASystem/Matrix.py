@@ -410,7 +410,7 @@ class MatrixInversionError(Exception):
 
 if __name__=="__main__":
     Q = AS.F_Q
-    Z5 = AS.ResidueClassField(5)
+    Z5 = AS.IntegerResidueClassField(5)
     m1 = Matrix(2,3,Q,data=[[1,2,3],[42,-1,0]])
     m2 = Matrix(3,4,Q,data=[[0,0,0,1],[0,1,1,-1],[100,20,0,-1]])
     m3 = Matrix(2,2,Z5,data=[[1,3],[0,2]])

@@ -5,6 +5,7 @@ Created on 28.03.2019
 '''
 
 import BaseAlgebraicStructures as BAS
+import Symbol
 
 class Integers(BAS.EuclideanDomain):
     __instance = None
@@ -50,6 +51,9 @@ class Integers(BAS.EuclideanDomain):
         return int
     def isUnit(self, a):
         return a in [-1,1]
+    
+    def __repr__(self):
+        return "Z"
 
 class Rationals(BAS.QuotientField):
     __instance = None
@@ -64,14 +68,14 @@ class Rationals(BAS.QuotientField):
     def getElementType(self):
         return DomainElement.QuotientFieldElementRational
 
-class IntegerIdeal(BAS.Ideal):
+class IntegerIdeal(BAS.PrincipalIdeal):
+    def __new__(cls,*args):
+        return object.__new__(cls)
     def __init__(self, gen):
-        super(IntegerIdeal,self).__init__(Integers(),[gen])
-        self.gen = gen
+        super(IntegerIdeal,self).__init__(Integers(),gen)
         
     def isMaximal(self):
         return NTU.isPrime(self.gen)
-    
     
 class IntegerResidueClassRing(BAS.QuotientRing):
     def __new__(cls, order, _makeFieldOpt=True):
@@ -86,8 +90,8 @@ class IntegerResidueClassRing(BAS.QuotientRing):
         super(IntegerResidueClassRing,obj).__init__(Integers(),IntegerIdeal(order))
         return obj
     
-    def getSimpleRepresentant(self,val):
-        return val%self.order
+   # def getSimpleRepresentant(self,val):
+    #    return val%self.order
     
     def getElementType(self):
         return DomainElement.IntegerResidueEquivalenceClass
@@ -149,7 +153,14 @@ class SquareMatricesRing(BAS.Ring):
         if type(other)!=SquareMatricesRing:
             return False
         return self.size==other.size and self.basedomain==other.basedomain
+    
+    def __repr__(self):
+        return "M({},{})".format(self.basedomain,self.size)
 
+def polyRing(domain, var):
+    p = PolynomialDomain(domain,Symbol.Symbol(var))
+    return p, p([domain.zero,domain.one])
+    
 class PolynomialDomain(BAS.EuclideanDomain):
     """
     univariate polynomial domain
@@ -168,11 +179,19 @@ class PolynomialDomain(BAS.EuclideanDomain):
         return RationalFunctionsDomain(self)
         
     def add(self, a,b):
+        #if type(a)==self.basedomain.getElementType():
+        #    return self.add(self(a),b)
+        #if type(b)==self.basedomain.getElementType():
+        #    return self.add(a,self(b))
         coeffs = []
         for i in range(max(a.degree,b.degree)+1):
             coeffs.append(a[i]+b[i])
         return self(coeffs)#DomainElement.Polynomial(self, self.basedomain, coeffs)
     def mul(self, a,b):
+        #if type(a)==self.basedomain.getElementType():
+        #    return self.mul(self(a),b)
+        #if type(b)==self.basedomain.getElementType():
+        #    return self.mul(a,self(b))
         coeffs = []
         for i in range(a.degree+b.degree+1):
             c = sum((a[k]*b[i-k] for k in range(i+1)), self.basedomain.zero)
@@ -227,6 +246,12 @@ class PolynomialDomain(BAS.EuclideanDomain):
         if type(value)==self.getElementType():
             return value
         return self.getElementType().fromValue(value, self, self.basedomain)
+    
+    def __repr__(self):
+        a = str(self.basedomain)
+        if a<3:
+            return "{}[{}]".format(a,self.symbol)
+        return "({})[{}]".format(a,self.symbol)
     
 class RationalFunctionsDomain(BAS.QuotientField):
     def __init__(self, basering):

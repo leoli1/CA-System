@@ -17,24 +17,50 @@ class DomainElement(object):
         self.domain = domain
     
     def __add__(self, other):
+        other = self.__makeToDomain(other)
         self, other = DomainElement.__makeSameDomain(self, other)
         return self.domain.add(self,other)
+    def __radd__(self, other):
+        other = self.__makeToDomain(other)
+        self, other = DomainElement.__makeSameDomain(self, other)
+        return self.domain.add(other,self)
+    def __rmul__(self, other):
+        #if type(other)==int:
+        #    other = self.domain(other)
+        other = self.__makeToDomain(other)
+        self, other = DomainElement.__makeSameDomain(self, other)
+        return self.domain.mul(other,self)
     def __mul__(self, other):
+        other = self.__makeToDomain(other)
         self, other = DomainElement.__makeSameDomain(self, other)
         return self.domain.mul(self, other)
+    def __rsub__(self, other):
+        other = self.__makeToDomain(other)
+        self, other = DomainElement.__makeSameDomain(self, other)
+        return self.domain.sub(other, self)
     def __sub__(self, other):
+        other = self.__makeToDomain(other)
         self, other = DomainElement.__makeSameDomain(self, other)
         return self.domain.sub(self,other)
     def __div__(self, other):
-        
         return self/other
+    def __rdiv__(self, other):
+        return other/self
     def __truediv__(self, other):
+        other = self.__makeToDomain(other)
         self, other = DomainElement.__makeSameDomain(self, other)
         return self.domain.div(self, other)
+    def __rtruediv__(self, other):
+        other = self.__makeToDomain(other)
+        self,other = DomainElement.__makeSameDomain(self, other)
+        return self.domain.div(other, self)
     def __floordiv__(self, other):
+        other = self.__makeToDomain(other)
         self, other = DomainElement.__makeSameDomain(self, other)
         if isinstance(self.domain, BAS.EuclideanDomain):
             return self.domain.divisionWithRemainder(self,other)[0]
+        else:
+            raise Exception()
     def __neg__(self):
         return self.domain.addInverse(self)
     def __pow__(self, other):
@@ -46,6 +72,11 @@ class DomainElement(object):
             return self.inverse()*self.__pow__(other+1)
         else:
             return self*self.__pow__(other-1)
+        
+    def __mod__(self, other):
+        if self.domain.isEuclideanDomain():
+            return self.domain.divisionWithRemainder(self,other)[1]
+        raise Exception()
         
     def inverse(self):
         return self.domain.mulInverse(self)
@@ -62,20 +93,32 @@ class DomainElement(object):
             raise Exception()
         return self.domain.getQuotientField()(self,self.domain.one)
     
+    def __makeToDomain(self, other):
+        if hasattr(self.domain,"basedomain"):
+            if isinstance(self.domain.basedomain, BAS.QuotientField):
+                if self.domain.basedomain.basering.getElementType()==type(other):
+                    other = self.domain.basedomain(other)
+            if self.domain.basedomain.getElementType()==type(other):
+                other = self.domain(other)
+                
+        return other
+    
     @staticmethod
     def __makeSameDomain(a,b):
-        if type(a)==type(b):
+        try:
+            if type(a)==type(b):
+                return a,b
+            if not a.domain.isIntegralDomain() or not b.domain.isIntegralDomain():
+                raise Exception()
+            if a.domain.isField():
+                #-> self is in quotientfield, other is in basering
+                b = b.toQuotientFieldElement()
+            else:
+                #-> self is in basering, other in quotientfield
+                a = a.toQuotientFieldElement()
             return a,b
-        
-        if not a.domain.isIntegralDomain() or not b.domain.isIntegralDomain():
-            raise Exception()
-        if a.domain.isField():
-            #-> self is in quotientfield, other is in basering
-            b = b.toQuotientFieldElement()
-        else:
-            #-> self is in basering, other in quotientfield
-            a = a.toQuotientFieldElement()
-        return a,b
+        except:
+            return a,b
     @staticmethod
     def fromValue(val, domain):
         raise NotImplementedError()
@@ -164,6 +207,8 @@ class Polynomial(DomainElement):#TODO
         if coeffs==None:
             self.coeffs = [domain.zero]
         else:
+            if not (type(coeffs)==list or type(coeffs)==tuple):
+                coeffs = [coeffs]
             self.coeffs = map(basedomain.elementFromValue, coeffs)
             self.removeZeros()
         

@@ -24,3 +24,5 @@ def rootsOverFiniteField(poly):
                 roots.append([n,1])
             return roots
         
+    return []
+        

@@ -55,6 +55,9 @@ class Ring(object):
     def __ne__(self,other):
         return not self==other
     
+    def __repr__(self):
+        raise NotImplementedError()
+    
 class IntegralDomain(Ring):
     def __init__(self):
         self.allowCalcInQuotientField = True
@@ -106,15 +109,15 @@ class EuclideanDomain(IntegralDomain):
         (q,r) = self.divisionWithRemainder(a, b)
         if d==None:
             d = self.gcd(a,b)
-        r,f = self.getAssociateRepresentant(r)
-        if r==d:
-            x = self.mulInverse(f)
+        rn,f = self.getAssociateRepresentant(r)
+        if rn==d:
+            x = f
             y = -q*x
             return (x,y)
         anew = b
         bnew = r
         xn,yn=self.euclid(anew,bnew,d=d)
-        return (yn,xn-yn*q)
+        return (yn,xn-q*yn)#(xn-yn)//q)
     def coprime(self,a,b):
         return self.gcd(a,b)==self.getAssociateRepresentant(self.one)[0]
     def divisibleBy(self, a,b):
@@ -184,7 +187,15 @@ class QuotientField(Field):
     def elementFromValue(self, value,simplify=True):
         return self.getElementType().fromValue(value, self,simplify=simplify)
     
+    def __repr__(self):
+        return "Quot({})".format(self.basering)
+    
 class Ideal(Ring):
+    def __new__(cls, ring, generator):
+        if len(generator)==1:
+            return PrincipalIdeal(ring,generator[0])
+        obj = object.__new__(cls)
+        return obj
     def __init__(self, ring, generator):
         self.ring = ring
         self.generator = generator
@@ -201,13 +212,32 @@ class Ideal(Ring):
                 if (self.generator[0]==self.zero):
                     return a==self.zero
                 return self.ring.divisibleBy(a,self.generator[0])
-            raise NotImplementedError()
+            #raise NotImplementedError()
         raise NotImplementedError()
     
     def isPrincipal(self):
         return len(self.generator)==1
     def isMaximal(self):
         return False
+    
+    def __repr__(self):
+        out = "<"
+        for gen in self.generator:
+            out += str(gen)+", "
+        return out.strip(", ") +">"
+        #return "<{}>".format(self.gen)
+    
+class PrincipalIdeal(Ideal):
+    def __new__(cls, ring, gen):
+        obj = object.__new__(cls)
+        #super(PrincipalIdeal,obj).__init__(ring,[gen])
+        #obj.gen=gen
+        return obj
+    def __init__(self, ring, gen):
+        self.gen = gen
+        super(PrincipalIdeal,self).__init__(ring,[gen])
+        
+        #return "{}{}".format(self.gen,self.ring)
     
 class QuotientRing(Ring):
     """
@@ -247,8 +277,14 @@ class QuotientRing(Ring):
         return self.ideal.isMaximal()
     
     def getSimpleRepresentant(self,val):
+        if self.ring.isEuclideanDomain() and self.ideal.isPrincipal():
+            return val%self.ideal.generator[0]
+        
         raise NotImplementedError()
     
     def getElementType(self):
         return DomainElement.QuotientRingEquivalenceClass
+    
+    def __repr__(self):
+        return "{}/{}".format(self.ring,self.ideal)
         

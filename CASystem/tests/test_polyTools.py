@@ -15,7 +15,7 @@ class TestPolyTools(unittest.TestCase):
         Z7 = AS.IntegerResidueClassField(7)
         Z7x = AS.PolynomialDomain(Z7,Symbol.Symbol('x'))
         poly = Z7x([1,0,1])
-        self.assertEqual(polyTools.rootsOverFiniteField(poly), None)
+        self.assertEqual(polyTools.rootsOverFiniteField(poly), [])
         poly = Z7x([-1,0,1])
         self.assertEqual(polyTools.rootsOverFiniteField(poly), [[Z7(6),1],[Z7(1),1]])
 

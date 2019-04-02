@@ -9,11 +9,6 @@ import BaseAlgebraicStructures as BAS
 import Symbol
 
 class TestAlgebraicStructures(unittest.TestCase):
-    def test_IntegerResidueClass(self):
-        Z5 = AS.IntegerResidueClassRing(5)
-        a = Z5(4)
-        b = Z5(3)
-        print(a/b)
     def test_Rationals(self):
         Q = AS.F_Q
         self.assertIsInstance(Q, BAS.QuotientField)
@@ -70,6 +65,17 @@ class TestAlgebraicStructures(unittest.TestCase):
         
         rational = polydomain.getQuotientField()(p1,p2)
         self.assertEqual(p1/p2, rational)
+        
+        
+    def test_PolynomialIdeals(self):
+        Q = AS.F_Q
+        Qx = AS.PolynomialDomain(Q,Symbol.Symbol('x'))
+        x=Qx([0,1])
+        i = x**2+2
+        I = BAS.PrincipalIdeal(Qx,i)
+        q = BAS.QuotientRing(Qx,I)
+        f = q(x+1)
+        self.assertEqual(f.inverse()*f,q.one)
         
         
 
