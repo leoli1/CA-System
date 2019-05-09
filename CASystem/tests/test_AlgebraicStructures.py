@@ -66,6 +66,8 @@ class TestAlgebraicStructures(unittest.TestCase):
         rational = polydomain.getQuotientField()(p1,p2)
         self.assertEqual(p1/p2, rational)
         
+        self.assertEqual(p1.derivative(), polydomain([2,2]))
+        
         
     def test_PolynomialIdeals(self):
         Q = AS.F_Q
@@ -76,6 +78,12 @@ class TestAlgebraicStructures(unittest.TestCase):
         q = BAS.QuotientRing(Qx,I)
         f = q(x+1)
         self.assertEqual(f.inverse()*f,q.one)
+        self.assertEqual(f+1,q(x+2))
+        
+    def test_complexRationals(self):
+        C = AS.ComplexRationals()
+        i = C(0,1)
+        self.assertEqual((1+i).conj(), C(1,-1))
         
         
 

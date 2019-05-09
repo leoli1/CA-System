@@ -6,7 +6,6 @@ Created on 19.01.2019
 from __future__ import division
 import AlgebraicStructures as AS
 import BaseAlgebraicStructures as BAS
-import polyTools
 
 class DomainElement(object):
 
@@ -94,14 +93,19 @@ class DomainElement(object):
         return self.domain.getQuotientField()(self,self.domain.one)
     
     def __makeToDomain(self, other):
+        if type(other)==type(self):
+            return other
         if hasattr(self.domain,"basedomain"):
             if isinstance(self.domain.basedomain, BAS.QuotientField):
                 if self.domain.basedomain.basering.getElementType()==type(other):
                     other = self.domain.basedomain(other)
             if self.domain.basedomain.getElementType()==type(other):
-                other = self.domain(other)
+                return self.domain(other)
                 
-        return other
+        try:
+            return self.domain(other)
+        except:
+            return other
     
     @staticmethod
     def __makeSameDomain(a,b):
@@ -127,9 +131,9 @@ class QuotientRingEquivalenceClass(DomainElement):
     def __init__(self, domain,basering, val):
         self.domain = domain
         self.basering = basering
-        self.val = self.domain.getSimpleRepresentant(val)
+        self.val = self.domain.getSimpleRepresentant(self.basering(val))
         
-        self.useEquivalenceClassNotation = False
+        self.useEquivalenceClassNotation = False # print val or [val] 
         
         if not isinstance(domain, BAS.QuotientRing):
             raise TypeError()
@@ -146,6 +150,21 @@ class QuotientRingEquivalenceClass(DomainElement):
         if self.useEquivalenceClassNotation:
             return "[{}]".format(self.val)
         return str(self.val)
+    
+class ComplexRationalEquivalenceClass(QuotientRingEquivalenceClass):
+    def __init__(self,domain, val):
+        super(ComplexRationalEquivalenceClass,self).__init__(domain,domain.ring,val)
+        if not isinstance(domain,AS.ComplexRationals):
+            raise TypeError()
+        
+        
+    def conj(self):
+        self.val = self.domain.getSimpleRepresentant(self.basering(self.val))
+        return ComplexRationalEquivalenceClass(self.domain,[self.val[0],-self.val[1]])
+        
+    @staticmethod
+    def fromValue(val, domain):
+        return ComplexRationalEquivalenceClass(domain,val)
     
 class IntegerResidueEquivalenceClass(QuotientRingEquivalenceClass):
     def __init__(self, domain,val):
@@ -164,7 +183,7 @@ class QuotientFieldElement(DomainElement):
     def __init__(self, domain, basedomain, a,b,simplify=True):
         self.domain = domain
         self.basedomain = basedomain
-        self.a, self.b = a,b
+        self.a, self.b = self.basedomain(a),self.basedomain(b)
         if isinstance(self.basedomain, BAS.EuclideanDomain) and simplify:
             (self.a,self.b) = self.domain._simplify(a,b)
         if type(a)!=self.basedomain.getElementType():
@@ -242,15 +261,24 @@ class Polynomial(DomainElement):#TODO
                 return False
         return True
     
+    def isMonic(self):
+        return self.lcoeff==self.basedomain.one
     def evaluate(self, value):
         return sum((self[i]*(value**i) for i in range(self.degree+1)), self.basedomain.zero)
     def findRoots(self):
+        import polyTools
         if isinstance(self.basedomain, AS.IntegerResidueClassField):
             return polyTools.rootsOverFiniteField(self)
         raise NotImplementedError()
     @staticmethod
     def fromValue(val, domain, basedomain):
         return Polynomial(domain, basedomain, val)
+    
+    def derivative(self):
+        coeffs=[]
+        for i in range(self.degree):
+            coeffs.append(self.basedomain(i+1)*self[i+1])
+        return self.domain(coeffs)
     
     def __repr__(self):
         out = ""

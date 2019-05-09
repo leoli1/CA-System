@@ -78,6 +78,9 @@ class Matrix(object):
             self.__data = [[basedomain.zero for j in range(columns)] for i in range(rows)]
         else:
             self.__data = iterMap(basedomain.elementFromValue, data)
+            for i in range(rows):
+                if len(self.__data[i])<columns:
+                    self.__data[i] += [basedomain.zero]*(columns-len(self.__data[i]))
         self.rows = rows
         self.columns = columns
         self.basedomain = basedomain
@@ -215,6 +218,11 @@ class Matrix(object):
                 
         return basis
     
+    def getLeftNullSpaceMatrix(self):
+        trans = self.transpose()
+        nb = trans.getNullspaceBasis()
+        return map(Matrix.transpose,nb)
+    
     def getEigenValues(self):
         """
         returns a list [[l1,a1,g1],[l2,a2,g2],...] where the li are the different eigenvalues and the ai/gi 
@@ -233,7 +241,12 @@ class Matrix(object):
     def isTrigonalizable(self):
         evs = self.getEigenValues()
         return sum(x[1] for x in evs)==self.rows
-    
+    def transpose(self):
+        m = Matrix(self.columns,self.rows,self.basedomain)
+        for i in range(self.rows):
+            for j in range(self.columns):
+                m[j,i] = self[i,j]
+        return m
     def getDiagonalizerMatrix(self):
         """
         returns (P,D), such that D is diagonal and self = PDP^(-1)
@@ -291,13 +304,13 @@ class Matrix(object):
             for k in range(self.rows):
                 if k==l:
                     continue
-                if m[k,l]==m.basedomain.zero:
+                if m[k,jl]==m.basedomain.zero:
                     continue
                 rowOps = RowOperation2(m.basedomain, l, k, -m[k,jl])
                 m = rowOps.apply(m)
                 rowOperations.append(rowOps)
-                (m, nrowOps) = self._RREF_Helper_moveZeroRows(m)
-                rowOperations += nrowOps
+            (m, nrowOps) = self._RREF_Helper_moveZeroRows(m)
+            rowOperations += nrowOps
             for i in range(l+1, m.rows):
                 if not m.getRow(i).isZero():
                     l+=1

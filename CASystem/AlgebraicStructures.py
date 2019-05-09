@@ -67,6 +67,39 @@ class Rationals(BAS.QuotientField):
     
     def getElementType(self):
         return DomainElement.QuotientFieldElementRational
+    
+    def __repr__(self):
+        return "Q"
+    
+class ComplexRationals(BAS.QuotientRing):
+    __instance = None
+    def __new__(cls):
+        if ComplexRationals.__instance==None:
+            obj = object.__new__(cls)
+            obj._polyRing = PolynomialDomain(Rationals(),Symbol.Symbol('i'))
+            obj._poly = obj._polyRing([1,0,1])
+            obj._ideal = BAS.PrincipalIdeal(obj._polyRing,obj._poly)
+            obj._ideal.isMaximal = lambda: True
+            super(ComplexRationals,obj).__init__(obj._polyRing,obj._ideal)
+            ComplexRationals.__instance = obj
+        return ComplexRationals.__instance
+    
+    def __call__(self, real=0,imag=0):
+        #if type(value)==self.getElementType():
+        #    return value
+        if type(real)==type(self._poly):
+            return self.getElementType().fromValue(real, self)
+        return self.getElementType().fromValue([real,imag], self)
+        #return self.getElementType().fromValue(self._polyRing([real,imag]), self._polyRing)
+        
+    def getElementType(self):
+        return DomainElement.ComplexRationalEquivalenceClass
+    def __repr__(self):
+        return "C"
+    def __init__(self):
+        pass
+        
+            
 
 class IntegerIdeal(BAS.PrincipalIdeal):
     def __new__(cls,*args):
@@ -173,25 +206,20 @@ class PolynomialDomain(BAS.EuclideanDomain):
         self._zero = self([self.basedomain.zero])
         self._one = self([self.basedomain.one])
         
+    def getVar(self):
+        return self([self.basedomain.zero,self.basedomain.one])
+        
     def getQuotientField(self):
         if self._quotientField!=None:
             return self._quotientField
         return RationalFunctionsDomain(self)
         
     def add(self, a,b):
-        #if type(a)==self.basedomain.getElementType():
-        #    return self.add(self(a),b)
-        #if type(b)==self.basedomain.getElementType():
-        #    return self.add(a,self(b))
         coeffs = []
         for i in range(max(a.degree,b.degree)+1):
             coeffs.append(a[i]+b[i])
         return self(coeffs)#DomainElement.Polynomial(self, self.basedomain, coeffs)
     def mul(self, a,b):
-        #if type(a)==self.basedomain.getElementType():
-        #    return self.mul(self(a),b)
-        #if type(b)==self.basedomain.getElementType():
-        #    return self.mul(a,self(b))
         coeffs = []
         for i in range(a.degree+b.degree+1):
             c = sum((a[k]*b[i-k] for k in range(i+1)), self.basedomain.zero)
@@ -249,7 +277,7 @@ class PolynomialDomain(BAS.EuclideanDomain):
     
     def __repr__(self):
         a = str(self.basedomain)
-        if a<3:
+        if len(a)<3:
             return "{}[{}]".format(a,self.symbol)
         return "({})[{}]".format(a,self.symbol)
     
@@ -260,6 +288,21 @@ class RationalFunctionsDomain(BAS.QuotientField):
             raise Exception()
         basering._rationalsDomain = self
         
+        
+class SimpleAlgebraicAdjunctionExtension(BAS.QuotientRing):
+    def __init__(self, basefield, minimalPolynomial,name="w"):
+        if not basefield.isField():
+            raise Exception()
+        if not minimalPolynomial.basedomain==basefield:
+            raise Exception()
+        self._polyDomain, self.algElement = minimalPolynomial.domain,minimalPolynomial.domain.getVar()
+        i = BAS.PrincipalIdeal(self._polyDomain,minimalPolynomial)
+        super(SimpleAlgebraicAdjunctionExtension,self).__init__(self._polyDomain,i)
+        self.name = name
+        self.basefield=basefield
+        self.minimalPolynomial = minimalPolynomial
+    def __repr__(self):
+        return "{}({})".format(self.basefield,self.name)
         
 '''class DomainAdjunctionExtension(object):
     """

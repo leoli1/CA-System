@@ -277,6 +277,9 @@ class QuotientRing(Ring):
         return self.ideal.isMaximal()
     
     def getSimpleRepresentant(self,val):
+        """
+        returns a simple representant for the equivalence class [val]
+        """
         if self.ring.isEuclideanDomain() and self.ideal.isPrincipal():
             return val%self.ideal.generator[0]
         
