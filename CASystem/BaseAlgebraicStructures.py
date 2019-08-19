@@ -124,6 +124,25 @@ class EuclideanDomain(IntegralDomain):
         return self.divisionWithRemainder(a, b)[1]==self.zero
     
     
+    def CRT(self, moduli, remainders):
+        # Chinese remainder theorem
+        m = moduli
+        R = remainders
+        N = reduce(lambda x,y:x*y, m)
+        Ns = [N//mod for mod in m]
+        ys = []
+        for i in range(len(m)):
+            n = Ns[i]
+            # can be done via quotient field (R/<m[i]>)
+            #quotientRing = 
+            # quicker directly:
+            ys.append(self.euclid(m[i],n)[1])
+            
+        print(Ns)
+        print(ys)
+        x0 = sum(y*n*r for (y,n,r) in zip(ys,Ns,R))
+        return (x0, lambda n: x0+n*N)
+    
     def isEuclideanDomain(self):
         return True
     

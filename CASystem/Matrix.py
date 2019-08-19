@@ -11,7 +11,7 @@ import AlgebraicStructures as AS
 class ElementaryRowOperation(object):
     def apply(self, matrix):
         raise NotImplementedError()
-class RowOperation1(ElementaryRowOperation):
+class RowOperation1(ElementaryRowOperation): # mult row by scalar
     def __init__(self, domain, row, factor):
         self.basedomain = domain
         self.factor = factor
@@ -26,7 +26,7 @@ class RowOperation1(ElementaryRowOperation):
     def __repr__(self):
         return "R{}->{}*R{}".format(self.row,self.factor,self.row)
         
-class RowOperation2(ElementaryRowOperation):
+class RowOperation2(ElementaryRowOperation): # add multiple of row to other row
     def __init__(self, domain, row1, row2, factor):
         self.basedomain = domain
         self.row1 = row1
@@ -43,7 +43,7 @@ class RowOperation2(ElementaryRowOperation):
     def __repr__(self):
         return "R{}->R{}+{}*R{}".format(self.row2, self.row2, self.factor, self.row1)
             
-class RowOperation3(ElementaryRowOperation):
+class RowOperation3(ElementaryRowOperation): # swap rows
     def __init__(self, domain, row1, row2):
         self.basedomain = domain
         self.row1 = row1
@@ -97,6 +97,14 @@ class Matrix(object):
         return self.__data[index]
     def getRow(self, index):
         return Matrix(1,self.columns,self.basedomain, data=[self[index]])
+    
+    def getSubMatrix(self, i0,j0,m,n):
+        M = Matrix(m,n,self.basedomain)
+        for i in range(m):
+            for j in range(n):
+                M[i,j] = self[i+i0,j+j0]
+                
+        return M
     
     def __add__(self, other):
         if self.rows!=other.rows or self.columns!=other.columns:
@@ -261,8 +269,58 @@ class Matrix(object):
             eigenValues += [ev]*m
         return (Matrix.getMatrixFromColumnVectors(eigenVectors), Matrix.diag(self.basedomain, eigenValues))
         
-    
-
+    def getSmithNormalform(self):
+        """
+        returns (S,Q,P,[s1,...sl],l), such that S is in Smith-Form and Q*self*P=S, and s1...sl are the elementary divisors of self
+        """
+        
+        R = self.basedomain
+        m = self.rows
+        n = self.columns
+        if not R.isEuclideanDomain():
+            raise NotImplementedError()
+        
+        d = R.euclidFunction
+        
+        H = self.copy()
+        """   H|En
+        H0 =  ----
+              Em|0
+        """
+        delta = lambda x,y: 1 if x==y else 0
+        H0 = Matrix(n+m,n+m,self.basedomain)
+        for i in range(m):
+            for j in range(n):
+                H0[i,j] = H[i,j]
+                H0[i,j+n] = delta(i,j)
+                H0[i+m,i] = delta(i,j)
+        l = 0
+        s = []
+        #(1)
+        while l<min(m,n):# and !H0.getSubMatrix(l+1,l+1,m-l-1,n-l-1).isZero():
+            minIndex = None
+            minVal = -1
+            for i in range(m):
+                for j in range(n):
+                    if minVal==-1 or d(H0[i,j])<minVal:
+                        minIndex = (i,j)
+                        minVal = d(H0[i,j])
+                        
+            
+                        
+                        
+                        
+                        
+                        
+        S = H0.getSubMatrix(0, 0, m, n)
+        Q = H0.getSubMatrix(0, n, m, m)
+        P = H0.getSubMatrix(m, 0, n, n)
+        
+        return (S,Q,P,s,l)            
+        
+                        
+            
+                            
     def getRREF(self):
         """
         returns (rref,rank,rowOps,pivots) where
